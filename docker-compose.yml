@@ -1,109 +1,122 @@
-version: "3.4"
 
 services:
+  ngrok:
+    build: ./ngrok-wrapper
+    container_name: saleor-platform-ngrok
+    ports: ["4040:4040"]
+    networks: [saleor-backend-tier]
+
+  updater:
+    image: alpine:latest
+    container_name: saleor-platform-updater
+    entrypoint: /bin/sh
+    command: ["/app/scripts/updater-entrypoint.sh"]
+    depends_on: ["ngrok"]
+    volumes:
+      - ./:/app
+      - ./scripts/updater-entrypoint.sh:/app/scripts/updater-entrypoint.sh:ro
+      - ./saleor-app-extension/.env:/app/saleor-app-extension/.env:rw
+    networks: [saleor-backend-tier]
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: saleor
+      POSTGRES_PASSWORD: saleor
+    volumes:
+      - saleor-db:/var/lib/postgresql/data
+      - ./replica_user.sql:/docker-entrypoint-initdb.d/replica_user.sql
+    networks: [saleor-backend-tier]
+
+  redis:
+    image: redis:7.0-alpine
+    volumes:
+      - saleor-redis:/data
+    networks: [saleor-backend-tier]
+
+  jaeger:
+    image: jaegertracing/all-in-one
+    networks: [saleor-backend-tier]
+
   api:
-    image: ghcr.io/saleor/saleor:3.20
-    ports:
-      - 8000:8000
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    stdin_open: true
-    tty: true
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: saleor-platform-api
+    entrypoint: ["bash", "/app/run-saleor.sh"]
+    ports: ["8000:8000"]
+    environment:
+      DJANGO_SUPERUSER_EMAIL: andrew@amperedigital.ca
+      DJANGO_SUPERUSER_PASSWORD: supersecret
+    volumes:
+      - saleor-media:/app/media
+      - ./overrides/settings_patch.py:/app/saleor/settings_patch.py:ro
+      - ./run-saleor.sh:/app/run-saleor.sh:ro
+      - ./common.env:/app/common.env:ro
+      - ./backend.env:/app/backend.env:ro
+
     depends_on:
       - db
       - redis
       - jaeger
-    volumes:
-      # shared volume between worker and api for media
-      - saleor-media:/app/media
-    env_file:
-      - common.env
-      - backend.env
+      - updater
+    restart: unless-stopped
+    networks: [saleor-backend-tier]
+
+  token-init:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: saleor-platform-token-init
+    entrypoint:
+      [
+        "sh","-c",
+        "until curl -sSf http://api:8000/graphql/; do echo waiting for API; sleep 2; done; sh /app/scripts/write-admin-token.sh"
+      ]
     environment:
-      - JAEGER_AGENT_HOST=jaeger
-      - DASHBOARD_URL=http://localhost:9000/
-      - ALLOWED_HOSTS=localhost,api
+      DJANGO_SUPERUSER_EMAIL: andrew@amperedigital.ca
+      DJANGO_SUPERUSER_PASSWORD: supersecret
+    volumes:
+      - ./scripts/write-admin-token.sh:/app/scripts/write-admin-token.sh:ro
+      - ./auth:/app/auth
+    depends_on:
+      - api
+    restart: "no"
+    networks: [saleor-backend-tier]
+
+  saleor-app-extension:
+    build: ./saleor-app-extension
+    container_name: saleor-platform-app-extension
+    ports: ["3000:3000"]
+    env_file: [./saleor-app-extension/.env]
+    volumes:
+      - ./auth:/app/auth
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks: [saleor-backend-tier]
 
   dashboard:
-    image: ghcr.io/saleor/saleor-dashboard:latest
-    ports:
-      - 9000:80
-    restart: unless-stopped
-
-  db:
-    image: library/postgres:15-alpine
-    ports:
-      - 5432:5432
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    volumes:
-      - saleor-db:/var/lib/postgresql/data
-      - ./replica_user.sql:/docker-entrypoint-initdb.d/replica_user.sql
-    environment:
-      - POSTGRES_USER=saleor
-      - POSTGRES_PASSWORD=saleor
-
-  redis:
-    image: library/redis:7.0-alpine
-    ports:
-      - 6379:6379
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    volumes:
-      - saleor-redis:/data
-
-  worker:
-    image: ghcr.io/saleor/saleor:3.20
-    command: celery -A saleor --app=saleor.celeryconf:app worker --loglevel=info -B
-    restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    env_file:
-      - common.env
-      - backend.env
+    build: ./dashboard
+    container_name: saleor-platform-dashboard
+    ports: ["9000:80"]
+    env_file: [./dashboard/.env]
     depends_on:
-      - redis
-      - mailpit
-    volumes:
-      # shared volume between worker and api for media
-      - saleor-media:/app/media
-
-  jaeger:
-    image: jaegertracing/all-in-one
-    ports:
-      - "5775:5775/udp"
-      - "6831:6831/udp"
-      - "6832:6832/udp"
-      - "5778:5778"
-      - "16686:16686"
-      - "14268:14268"
-      - "9411:9411"
+      - api
     restart: unless-stopped
-    networks:
-      - saleor-backend-tier
-    volumes:
-      - type: tmpfs
-        target: /tmp
+    networks: [saleor-backend-tier]
 
   mailpit:
     image: axllent/mailpit
-    ports:
-      - 1025:1025 # smtp server
-      - 8025:8025 # web ui. Visit http://localhost:8025/ to check emails
+    container_name: saleor-platform-mailpit
+    ports: ["1025:1025","8025:8025"]
     restart: unless-stopped
-    networks:
-      - saleor-backend-tier
+    networks: [saleor-backend-tier]
 
 volumes:
   saleor-db:
-    driver: local
   saleor-redis:
-    driver: local
   saleor-media:
 
 networks:
   saleor-backend-tier:
-    driver: bridge

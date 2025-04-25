@@ -1,0 +1,7 @@
+authtoken: 2vufFQiuJ4gahxE6trRDCxDnDoB_71qUg2JWLx9t8b7ynoqvK
+version: 2
+web_addr: 0.0.0.0:4040
+tunnels:
+  app-extension:
+    addr: http://saleor-app-extension:3000
+    proto: http
