@@ -1,0 +1,24 @@
+{
+  "name": "canada-tax",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@saleor/app-sdk": "workspace:*",
+    "@saleor/apps-logger": "workspace:*",
+    "@saleor/apps-shared": "workspace:*",
+    "@saleor/apps-ui": "workspace:*",
+    "@saleor/react-hook-form-macaw": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.5",
+    "next": "^15.3.1",
+    "typescript": "^5.3.3"
+  }
+}
