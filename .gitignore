@@ -1,1 +1,3 @@
-.idea
+.ideacerts/*.pem
+certs/instance.uuid
+certs/

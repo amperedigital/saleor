@@ -1,22 +1,45 @@
 
 services:
-  ngrok:
-    build: ./ngrok-wrapper
-    container_name: saleor-platform-ngrok
-    ports: ["4040:4040"]
-    networks: [saleor-backend-tier]
 
-  updater:
-    image: alpine:latest
-    container_name: saleor-platform-updater
-    entrypoint: /bin/sh
-    command: ["/app/scripts/updater-entrypoint.sh"]
-    depends_on: ["ngrok"]
+
+  saleor-apps-server:
+    container_name: saleor-apps-server
+    build:
+      context: ./saleor-apps-server
+      dockerfile: Dockerfile
+    ports:
+      - "8899:8899"
+    restart: unless-stopped
+    networks:
+      - saleor-backend-tier
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: saleor-platform-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./:/app
-      - ./scripts/updater-entrypoint.sh:/app/scripts/updater-entrypoint.sh:ro
-      - ./saleor-app-extension/.env:/app/saleor-app-extension/.env:rw
-    networks: [saleor-backend-tier]
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/data/caddy
+    networks:
+      - saleor-backend-tier
+      
+
+  saleor-app-canada-tax:
+    container_name: saleor-app-canada-tax
+    build:
+      context: ./saleor-apps
+      dockerfile: apps/canada-tax/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3015:3000"
+    networks:
+      - saleor-network
+
+
+
 
   db:
     image: postgres:15-alpine
@@ -59,7 +82,6 @@ services:
       - db
       - redis
       - jaeger
-      - updater
     restart: unless-stopped
     networks: [saleor-backend-tier]
 
@@ -120,3 +142,5 @@ volumes:
 
 networks:
   saleor-backend-tier:
+  saleor-network:
+    driver: bridge

@@ -1,0 +1,7 @@
+FROM alpine:3.18
+
+RUN apk add --no-cache curl jq bash
+
+WORKDIR /app
+COPY scripts/updater-entrypoint.sh ./scripts/updater-entrypoint.sh
+ENTRYPOINT ["/bin/sh", "/app/scripts/updater-entrypoint.sh"]

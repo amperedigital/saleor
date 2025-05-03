@@ -1,0 +1,10 @@
+dev.amperedigital.ca {
+    tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+
+    reverse_proxy /api/manifest saleor-platform-app-extension:3000
+    reverse_proxy /api/register saleor-platform-app-extension:3000
+    reverse_proxy /your-extension-path saleor-platform-app-extension:3000
+    reverse_proxy /graphql saleor-platform-api:8000
+    reverse_proxy /saleor-core saleor-platform-api:8000
+    reverse_proxy / saleor-platform-dashboard:80
+}

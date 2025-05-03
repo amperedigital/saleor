@@ -1,0 +1,36 @@
+https://dev.amperedigital.ca {
+    tls /data/caddy/cert.pem /data/caddy/key.pem
+
+    @graphqlNoSlash {
+        path /graphql
+        method GET POST
+    }
+    handle @graphqlNoSlash {
+        rewrite * /graphql/
+        reverse_proxy saleor-platform-api:8000
+    }
+
+    reverse_proxy /graphql* saleor-platform-api:8000
+
+    # App extension endpoints
+    reverse_proxy /api/manifest saleor-platform-app-extension:3000
+    reverse_proxy /api/register saleor-platform-app-extension:3000
+    reverse_proxy /your-extension-path saleor-platform-app-extension:3000
+
+    # Saleor Dashboard
+    handle_path /dashboard* {
+        reverse_proxy saleor-platform-dashboard:80
+        header Content-Security-Policy "upgrade-insecure-requests"
+    }
+
+    # App Store static logos & manifest JSON
+    handle_path /app-store/* {
+        uri strip_prefix /app-store
+        reverse_proxy saleor-apps-server:8899
+    }
+
+    
+
+    # Core API
+    reverse_proxy /saleor-core saleor-platform-api:8000
+}

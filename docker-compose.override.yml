@@ -1,0 +1,4 @@
+services:
+  saleor-platform-updater:
+    image: curlimages/curl:latest
+    entrypoint: ["/bin/sh", "-c", "echo Skipping updater."]

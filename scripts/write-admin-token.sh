@@ -4,7 +4,7 @@ set -e
 echo "🔑 Generating token & installing extension…"
 
 # 1) Generate JWT
-RESPONSE=$(curl -s http://api:8000/graphql \
+RESPONSE=$(curl -s http://api:8000/graphql/ \
   -H "Content-Type: application/json" \
   -d "{\"query\":\"mutation { tokenCreate(email: \\\"${DJANGO_SUPERUSER_EMAIL}\\\", password: \\\"${DJANGO_SUPERUSER_PASSWORD}\\\") { token errors { field message } } }\"}")
 
@@ -25,7 +25,7 @@ TTL=$((EXP - NOW))
 echo "{\"Authorization\":\"Bearer $TOKEN\",\"ttl_seconds\":$TTL}" > /app/auth/token.txt
 
 # 4) Install app via GraphQL
-INSTALL=$(curl -s http://api:8000/graphql \
+INSTALL=$(curl -s http://api:8000/graphql/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   --data-raw '{"query":"mutation InstallApp{ appInstall(input:{appName:\"saleor-app-extension\",manifestUrl:\"http://saleor-app-extension:3000/api/manifest/\"}){ appInstallation{ id status appName } appErrors{ field message } } }"}')
