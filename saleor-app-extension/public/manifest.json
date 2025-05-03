@@ -1,0 +1,17 @@
+{
+  "name": "saleor-app-extension",
+  "id": "saleor.app.extension",
+  "version": "0.1.0",
+  "tokenTargetUrl": "http://host.docker.internal:3000/api/register",
+  "appUrl": "http://host.docker.internal:3000",
+  "permissions": ["MANAGE_APPS"],
+  "extensions": [
+    {
+      "label": "My Extension",
+      "mount": "PRODUCT_OVERVIEW_CREATE",
+      "target": "MODAL",
+      "url": "http://host.docker.internal:3000/your-extension-path",
+      "permissions": ["MANAGE_PRODUCTS"]
+    }
+  ]
+}

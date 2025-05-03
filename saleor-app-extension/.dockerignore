@@ -1,0 +1,3 @@
+# saleor-app-extension/.dockerignore
+.next
+node_modules
